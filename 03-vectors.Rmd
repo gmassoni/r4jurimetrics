@@ -109,6 +109,7 @@ parser <- make_parser() %>%
 rds_path <- glue("{path}/cposg_rds")
 run_parser(cposg_files, parser, path = rds_path)
 rds_files <- dir(rds_path, full.names = TRUE)
+
 d_cposg <- map_dfr(rds_files, read_rds) %>% 
   mutate(id_lawsuit = build_id(str_extract(id, "^[0-9]+"))) %>% 
   select(id, id_lawsuit, everything())
@@ -135,8 +136,26 @@ A função mais importante para leitura de dados no `lubridate` é a `ymd`. Essa
 ### Exercícios
 
 1. Leia `January 20, 2018` com o `lubridate`.
+
+```{r}
+data <- "January 20, 2018"
+data %>% lubridate::mdy()
+```
+
 2. O que acontece se você rodar `ymd("2017-02-29")`? e `ymd("2016-02-29")`?
+
+```{r}
+ymd("2017-02-29")
+ymd("2016-02-29")
+```
+
 3. Encontre um caso em que o `lubridate` não funciona como você gostaria.
+
+```{r}
+data <- "19 February 1997"
+data %>% dmy
+```
+
 
 Outras funções importantes
 
@@ -161,7 +180,7 @@ Outro exemplo:
 ```{r echo=TRUE}
 c("2017-04-10", "2017-08-08", "2017-02-28") %>% 
   ymd() %>% 
-  ceiling_date("half year")
+  ceiling_date("half year") #arredonda pra frente o SEMESTRE
 ```
 
 Mais informações: 
@@ -221,9 +240,9 @@ c(string, str_trim(string))
 
 ```{r echo=TRUE}
 string <- 'Recurso parcialmente parcialmente procedente'
-str_replace(string, 'parcialmente ', '')
-str_replace_all(string, 'parcialmente ', 'x ')
-str_replace(string, '(parcialmente )+', 'x ')
+str_replace(string, 'parcialmente ', '') #substitui só o primeiro
+str_replace_all(string, 'parcialmente ', 'x ') #substitui todos (n) por n padrões
+str_replace(string, '(parcialmente )+', 'x ')  #substitui padrões repetidos por apenas um padrão
 
 str_replace_all('string     com    muitos espaços', ' +', ' ') # tirar espaços extras
 ```
@@ -237,16 +256,16 @@ frases <- c('a roupa do rei',
 
 str_match(frases, 'roe')
 str_match_all(frases, 'ro')
-str_match(frases, 'o (ro)')
+str_match(frases, 'o (ro)') #parenteses coloca resultados em outra coluna
 ```
 
 - `str_split()` separa uma string em várias de acordo com um separador.
 
 ```{r echo=TRUE}
-string <- 'eu sei, usar virgulas, de forma, perfeita'
+string <- c('eu, sei','eu sei, usar virgulas, de forma, perfeita')
 
-str_split(string, ', ')
-str_split(string, ', ', simplify = TRUE)
+str_split(string, ', ') #retorna uma lista de vetores
+str_split(string, ', ', simplify = TRUE) #retorna uma matriz em que cada linha representa uma posição do vetor de entrada (string)
 
 # avançado: quebrar por um padrão, mas mantendo ele na string
 # look arounds
@@ -368,15 +387,19 @@ d_decisoes <- readRDS(glue('{path}/d_decisoes.rds'))
 ```
 
 ```{r echo=TRUE}
-negaram <- regex('negaram', ignore_case = TRUE)
-parcial <- regex('parcial', ignore_case = TRUE)
-deram <- regex('deram', ignore_case = TRUE)
+negaram <- regex('negara?m|mantiv|negam|nao conhec', ignore_case = TRUE)
+parcial <- regex('parcial|em part', ignore_case = TRUE)
+deram <- regex('deram|nulidade|anul', ignore_case = TRUE)
+extinto <- regex('extin', ignore_case = TRUE) 
+
 
 tipos_decisao <- function(decisoes) {
+  decisoes <- rslp:::remove_accents(decisoes)
   case_when(
     str_detect(decisoes, negaram) ~ 'negado',
     str_detect(decisoes, parcial) ~ 'parcial',
     str_detect(decisoes, deram) ~ 'provido',
+    str_detect(decisoes, extinto) ~ 'extinto',
     TRUE ~ "outros")
 }
 
@@ -389,8 +412,10 @@ Exercício
 1. melhore essa classificação. Dica: é importante avaliar os casos que as expressões regulares não capturaram, para verficar se deixamos algo de fora.
 
 ```{r echo=TRUE}
-str_trunc(d_decisoes$decision[tipo_decisao == "outros"], 60) %>% 
+str_trunc(d_decisoes$decision[tipo_decisao == "outros"], 1500) %>% 
   head(10)
+
+str_detect(d_decisoes$decision[tipo_decisao == "outros"][2], parcial)
 ```
 
 
@@ -464,7 +489,22 @@ d_cjsg %>%
 Exercícios: 
 
 1. selecione as colunas que acabam com "ion" ou que contêm "sum".
+
+```{r}
+d_cjsg %>% 
+  select(ends_with('ion'), contains("sum"))
+
+```
+
+
 2. tire as colunas de texto.
+
+```{r}
+d_cjsg %>% 
+  select(-contains("sum")) #As colunas que contém texto são as sum
+
+```
+
 
 ### `filter`
 
@@ -483,7 +523,7 @@ Dica: usar `%in%`
 d_cjsg %>% 
   select(id_lawsuit, id_decision, district, dt_decision, rapporteur) %>% 
   filter(district %in% c('Campinas', 'Sorocaba') &
-         (day(dmy(dt_decision)) >= 29 | day(dmy(dt_decision)) < 25))
+         (day(dmy(dt_decision)) >= 29 | day(dmy(dt_decision)) < 25) )
 ```
 
 ```{r, echo=TRUE}
@@ -496,8 +536,23 @@ d_cjsg %>%
 Exercícios:
 
 1. filtre todas as decisões de 2018.
+
+```{r}
+d_cjsg %>% 
+  filter( year(dmy(dt_decision)) == 2018)
+```
+
+
 2. filtre apenas casos em que `id_decision` não é `NA`
-3. A aplicação de `filter` modifica o objeto `d_cjsg`?
+
+```{r}
+d_cjsg %>% 
+  filter(!is.na(id_decision))
+```
+
+
+3. A aplicação de `filter` modifica o objeto `d_cjsg`? Resposta: Não
+
 
 ### `mutate`
 
@@ -516,7 +571,19 @@ d_cjsg %>%
 Exercícios
 
 1. Crie uma coluna `comarca_limpa` com a comarca sem acentos e maiúscula
+
+```{r}
+d_cjsg %>% 
+  mutate(comarca_limpa = rslp:::remove_accents(district))
+```
+
 2. Crie uma coluna binária `drogas` que vale `TRUE` se no texto da decisão algo é falado de drogas e `FALSE` caso contrário. Considere tanto a palavra `droga` como seus sinônimos, algum exemplo de droga e a Lei de Drogas.
+
+```{r}
+d_cjsg %>% 
+  mutate(drogas = str_detect(summary, "droga"))
+```
+
 
 ### `arrange`
 
@@ -548,7 +615,7 @@ d_cjsg %>%
          ano_proc = as.numeric(ano_proc)) %>% 
   mutate(tempo_anos = ano_julgamento - ano_proc) %>% 
   arrange(desc(tempo_anos)) %>% 
-  group_by(district, court) %>% 
+  group_by(district) %>% 
   summarise(n = n(),
             media_anos = mean(tempo_anos),
             min_anos = min(tempo_anos),
@@ -568,6 +635,17 @@ d_cjsg %>%
 Exercício
 
 1. Quem é o relator mais prolixo?
+
+```{r}
+d_cjsg %>%
+  select(rapporteur, summary) %>%
+  mutate(tam_sent = str_length(summary)) %>%
+  group_by(rapporteur) %>%
+  summarise(n = n(),
+            tam_sent_media = mean(tam_sent)) %>%
+  filter(n > 10) %>%
+  arrange(desc(tam_sent_media))
+```
 
 ### `gather`
 
