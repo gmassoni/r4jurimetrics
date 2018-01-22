@@ -405,7 +405,8 @@ soma_um <- function(x) x + 1
 obj <- 10:15
 
 for (i in seq_along(obj)) {
-  obj[i] <- soma_um(obj[i])
+  obj[i] <- soma_um
+  (obj[i])
 }
 obj
 ```
@@ -534,6 +535,7 @@ pmap_dbl(list(obj_1, obj_2, obj_3), function(x, y, z) { x + y + z })
 
 ```{r, echo=TRUE}
 obj <- 10:15
+names(obj) <- letters[1:6]
 
 imap_chr(obj, ~paste(.x, .y, sep = "/"))
 ```
@@ -589,7 +591,7 @@ Para `map_at()` devemos passar um vetor de nomes ou índices onde a função dev
 ```{r, echo=TRUE}
 obj <- 10:15
 
-map_at(obj, c(2, 4, 6), ~.x * 2) %>% 
+map_at(obj, c(2, 4, 6), ~2 * .x) %>% 
   flatten_dbl()
 ```
 
@@ -673,7 +675,7 @@ soma_um <- function(x) { x + 1 }
 s_soma_um <- safely(soma_um, 0)
 obj <- c(10, 11, "a", 13, 14, 15)
 
-s_soma_um(obj)
+map(obj,s_soma_um)
 ```
 
 É interessante notar que essas funções são advérbios, pois modificam as funções principais, que geralmente são verbos.
@@ -691,6 +693,8 @@ Ao ler esses arquivos, nosso input era uma lista com três elementos, para cada 
 **Exercício**: o que faz esse código? Dica: leia o arquivo `data-raw/espec/d_2014.rds`, guarde num objeto `d_2014` e use o elemento `d_2014$d_movs` nessa função.
 
 ```{r, echo=TRUE}
+d_2014 <- readRDS("data-raw/espec/d_2014.rds")
+
 nest_infos <- function(.data, name) {
   .data %>%
     # o que faz isso?
@@ -721,7 +725,13 @@ file_to_cpo <- function(arq) {
 **Exercício**: como você faria para montar a base de dados com esse código? Dica: você primeiro precisa listar os arquivos, aplicar funções a eles e por fim empilhar. O resultado deve ser uma `tibble` com 30000 linhas e 3 list columns
 
 ```{r, echo=TRUE}
-# escreva código aqui
+arqs <- dir("data-raw/espec/", 
+            pattern = "[0-9]{4}",
+            full.names = TRUE)
+
+df <- map_dfr(arqs, file_to_cpo)
+df %>% View
+
 ```
 
 ## Calculando tempos e intervalos de tempo
@@ -732,7 +742,12 @@ Nesse contexto, uma função de interesse poderia ter o código abaixo.
 
 ```{r, echo=TRUE}
 summarise_dt <- function(dt, txt, re, .fun, ignore_case = TRUE) {
-  .fun(dt[str_detect(txt, regex(re, ignore_case = ignore_case))])
+  
+  my_regex <-  regex(re, ignore_case = ignore_case)
+  tiblle(dt = dt, txt = txt) %>% 
+    filter(str_detect(txt, my_regex)) %>% 
+    summarise(resumo = .fun(dt)) %>% 
+    pull(resumo)
 }
 ```
 
@@ -750,7 +765,9 @@ Queremos aplicar `summarise_dt()` com diversos parâmetros diferentes, para a ta
 summarise_movs <- function(m) {
   
   # partial assignment de summarise_dt
-  partial_summarise_mov <- partial(summarise_dt, dt = m$data_mov, txt = m$mov)
+  partial_summarise_mov <- partial(summarise_dt,
+                                   dt = dmy(m$data_mov),
+                                   txt = m$mov)
   
   # calcula várias estatísticas das movimentações
   summary_movs <- tribble(
@@ -769,7 +786,7 @@ summarise_movs <- function(m) {
     "dt", "min", ".*", min,
     "dt", "max", ".*", max) %>%
     mutate(val = map2(re, .fun, quietly(partial_summarise_mov)),
-           val = map_dbl(val, "result")) %>%
+           val = map(val, "result")) %>%
     unite(variavel, tipo, name) %>%
     select(variavel, val) %>%
     # joga tudo para as colunas
@@ -840,6 +857,7 @@ calcular_resumos <- function(d_movs) {
 Quando a função é muito demorada, pode ser útil utilizar barras de progresso para acompanhar o andamento do download. É possível utilizar barras de progresso com o pacote `progress`, com uma pequena adaptação da função original. Exemplo:
 
 ```{r eval=FALSE, echo=TRUE}
+d_espec <- readRDS("data-raw/espec/d_espec.rds")
 pb <- progress::progress_bar$new(total = nrow(d_espec))
 calcular_resumos_pb <- function(x) {
   pb$tick()
