@@ -374,6 +374,26 @@ Exercícios
 2. Desenhe esses captchas. Algum deles não funciona?
 3. Quebre esse captcha usando `decrypt`. Algum deles não funciona?
 
+```{r}
+arq <-  download_captcha("tjmg")
+read_captcha(arq) %>% plot()
+decrypt(arq, model = "tjmg")
+
+
+arq <-  download_captcha("tjrj")
+read_captcha(arq) %>% plot()
+decrypt(arq, model = "tjrj")
+
+arq <-  download_captcha("tjrs")
+read_captcha(arq) %>% plot()
+decrypt(arq, model = "tjrs")
+
+arq <-  download_captcha("trt")
+read_captcha(arq) %>% plot()
+decrypt(arq, model = "trt")
+
+```
+
 
 
 
@@ -424,7 +444,7 @@ Exercício:
 
 1. Sem separar as letras, quantas combinações temos no TJMG?
 
-
+$10^5$
 
 
 
@@ -956,6 +976,13 @@ Exercício
 1. Qual o resultado se aplicarmos a convolução no ponto (12, 12)?
 2. Qual o resultado se aplicarmos a convolução no ponto (1, 1)?
 
+```{r}
+sum(emoji[12 + (-1):1, 12 + (-1):1] * kern_horizontal)
+sum(emoji[1 + (-1):1, 1 + (-1):1] * kern_horizontal)
+
+```
+
+
 
 **Q**: Mas os números não devem variar de 0 a 1?
 
@@ -1060,6 +1087,7 @@ arq %>%
   add_bias(.6) %>% 
   magick::image_read() %>% 
   plot()
+
 ```
 
 Agora o kernel na horizontal. Note que identificamos padrões das linhas horizontais que tentam atrapalhar a visão das letras.
@@ -1166,11 +1194,11 @@ O modelo aplica convolução 3 vezes consecutivas e faz algumas contas que não 
 
 
 1. Pegar o input (imagem).
-1. Multiplicar (convoluir) por alguns pesos $W$.
-1. Adicionar um viés (ou bias, ou intercepto) $b$.
-1. Aplicar uma função não linear, por exemplo ReLu.
-1. Voltar para 2 várias vezes (o deep vem daí).
-1. Pegar os pesos finais e normalizar (usando, por exemplo, *softmax*) para obter probabilidades dos resultados.
+2. Multiplicar (convoluir) por alguns pesos $W$.
+3. Adicionar um viés (ou bias, ou intercepto) $b$.
+4. Aplicar uma função não linear, por exemplo ReLu.
+5. Voltar para 2 várias vezes (o deep vem daí).
+6. Pegar os pesos finais e normalizar (usando, por exemplo, *softmax*) para obter probabilidades dos resultados.
 
 
 
@@ -1315,9 +1343,9 @@ Agora temos `12 * 48` kernels 5x5 a serem aplicados. Precisamos seguir essas ope
 
 1. Para cada uma das 48 matrizes:
     1. Faça a convolução das 12 matrizes obtidos na convolução anterior pelos 12 kernels atuais e **some** os valores obtidos.
-    1. Adicione o bias.
-    1. Faça a ativação com ReLu.
-    1. Aplique o max pooling.
+    2. Adicione o bias.
+    3. Faça a ativação com ReLu.
+    4. Aplique o max pooling.
 
 Logo, temos 2 laços. O código para fazer isso fica assim:
 
